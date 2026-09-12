@@ -2,6 +2,7 @@ import os
 import requests
 from playwright.sync_api import sync_playwright
 
+# 監視対象（赤・青・黄のピクミン花瓶リスト）
 ITEMS = [
     {
         "name": "一輪挿し 赤 PIKMIN",
@@ -38,15 +39,10 @@ def check():
                 # ページへアクセス（基本DOM読み込みまで）
                 page.goto(url, wait_until="domcontentloaded", timeout=30000)
                 
-                # 「品切れ」または「カート」ボタンが表示されるまで最大10秒待つ
-                try:
-                    page.wait_for_selector("text=品切れ, text=カートに入れる", timeout=10000)
-                except Exception:
-                    print("ボタンの読み込みタイムアウト（描画待ち継続）")
+                # JavaScriptによるボタン要素の描画完了までしっかり3秒待機
+                page.wait_for_timeout(3000)
                 
-                page.wait_for_timeout(2000)
-                
-                # 画面内のテキスト要素をチェック
+                # 画面内のテキスト要素を特定
                 sold_out_elements = page.get_by_text("品切れ").all()
                 cart_button = page.get_by_text("カートに入れる").all()
                 
@@ -64,6 +60,7 @@ def check():
                 else:
                     print(f"判定結果: {name} は現在も「品切れ」状態です。")
                 
+                # サーバー負荷防止のため次のページまで1秒待機
                 page.wait_for_timeout(1000)
                 
         except Exception as e:
