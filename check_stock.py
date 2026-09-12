@@ -35,16 +35,22 @@ def check():
                 
                 print(f"--- チェック中: {name} ---")
                 
-                # ネットワーク通信が落ち着くまでしっかり待機
-                page.goto(url, wait_until="networkidle", timeout=30000)
+                # ページへアクセス（基本DOM読み込みまで）
+                page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                
+                # 「品切れ」または「カート」ボタンが表示されるまで最大10秒待つ
+                try:
+                    page.wait_for_selector("text=品切れ, text=カートに入れる", timeout=10000)
+                except Exception:
+                    print("ボタンの読み込みタイムアウト（描画待ち継続）")
+                
                 page.wait_for_timeout(2000)
                 
-                # 判定方法1: 画面内の「品切れ」という文字が含まれる要素を探す
+                # 画面内のテキスト要素をチェック
                 sold_out_elements = page.get_by_text("品切れ").all()
-                is_text_sold_out = len(sold_out_elements) > 0
-                
-                # 判定方法2: 「カートに入れる」という購入可能ボタンが存在するか探す
                 cart_button = page.get_by_text("カートに入れる").all()
+                
+                is_text_sold_out = len(sold_out_elements) > 0
                 has_cart_button = len(cart_button) > 0
                 
                 print(f"「品切れ」テキスト要素数: {len(sold_out_elements)}")
