@@ -1,53 +1,54 @@
 import os
 import requests
-from bs4 import BeautifulSoup
+from playwright.sync_api import sync_playwright
 
 URL = "https://store-jp.nintendo.com/item/goods/VM_NSJ_8_BZAB4"
 WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
 
 def check():
-    # マイニンテンドーストアに拒否されにくい一般的なブラウザのヘッダー情報
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
-    }
-    
-    try:
-        res = requests.get(URL, headers=headers, timeout=15)
+    with sync_playwright() as p:
+        # ブラウザ（Chromium）を起動
+        browser = p.chromium.launch(headless=True)
+        # 本物のPCブラウザに見せかける設定
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            viewport={"width": 1280, "height": 800}
+        )
+        page = context.new_page()
         
-        if res.status_code == 200:
-            html_text = res.text
+        try:
+            # ページへアクセスしてJavaScriptの実行を待つ
+            page.goto(URL, wait_until="domcontentloaded", timeout=30000)
+            # ページの読み込み完了まで数秒待機
+            page.wait_for_timeout(3000)
             
-            # ログ確認用：取得したHTMLの長さを出力（極端に短い場合はアクセス拒否されている可能性あり）
-            print(f"取得データサイズ: {len(html_text)} バイト")
+            # 画面全体のテキストを取得
+            content_text = page.content()
             
-            # 判定条件1: 「品切れ」という文字が含まれているか
-            # 判定条件2: 「カートに入れる」という購入ボタンが存在するか
-            has_sold_out_text = "品切れ" in html_text
-            has_cart_button = "カートに入れる" in html_text
+            print(f"取得データサイズ（JavaScript描画後）: {len(content_text)} バイト")
             
-            # ログ出力（Actionsのログで確認可能）
-            print(f"「品切れ」表記の検知: {has_sold_out_text}")
-            print(f"「カートに入れる」表記の検知: {has_cart_button}")
+            has_sold_out = "品切れ" in content_text
+            has_cart = "カートに入れる" in content_text
             
-            # 安全な判定：明確に「カートに入れる」が存在し、かつ「品切れ」がない場合のみ通知
-            if has_cart_button and not has_sold_out_text:
-                message = f"【再販検知！】ピクミンの花瓶（一輪挿し 赤）の在庫が復活した可能性があります！\n{URL}"
-                send_discord(message)
-                print("★ 在庫復活を検知し、Discordへ通知しました。")
+            print(f"「品切れ」テキスト検知: {has_sold_out}")
+            print(f"「カートに入れる」テキスト検知: {has_cart}")
+            
+            # 「カートに入れる」が存在し、「品切れ」がない場合のみ再販と判定
+            if has_cart and not has_sold_out:
+                msg = f"【再販検知！】ピクミンの花瓶（一輪挿し 赤）の在庫が復活しました！\n{URL}"
+                send_discord(msg)
+                print("★ 在庫復活を検知し、Discordに通知しました。")
             else:
-                print("判定結果: 現在も品切れ中（または準備中）です。")
+                print("判定結果: 現在も「品切れ」状態です。")
                 
-        else:
-            print(f"アクセス失敗 ステータスコード: {res.status_code}")
-            
-    except Exception as e:
-        print(f"エラーが発生しました: {e}")
+        except Exception as e:
+            print(f"エラーが発生しました: {e}")
+        finally:
+            browser.close()
 
 def send_discord(msg):
     if WEBHOOK_URL:
-        payload = {"content": msg}
-        requests.post(WEBHOOK_URL, json=payload)
+        requests.post(WEBHOOK_URL, json={"content": msg})
 
 if __name__ == "__main__":
     check()
