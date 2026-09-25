@@ -42,28 +42,26 @@ def check():
                 
                 # ページへアクセス
                 page.goto(url, wait_until="domcontentloaded", timeout=30000)
-                # 画面の描画完了まで3秒待機
                 page.wait_for_timeout(3000)
                 
-                # ポケモンセンターオンラインの売り切れ/再入荷表示テキストを取得
-                sold_out_elements = page.get_by_text("売り切れ").all() + page.get_by_text("再入荷お知らせを受け取る").all()
-                cart_button = page.get_by_text("カートに入れる").all()
+                # ポケセンのメインエリア内にある「売り切れ」または「再入荷お知らせ」要素を取得
+                # 売り切れ時は「売り切れ」「再入荷お知らせを受け取る」等のボタンまたはテキストが表示されます
+                sold_out_btn = page.query_selector("*:has-text('売り切れ')") or page.query_selector("*:has-text('再入荷お知らせ')")
                 
-                is_text_sold_out = len(sold_out_elements) > 0
-                has_cart_button = len(cart_button) > 0
+                # 画面全体の「売り切れ/再入荷」関連要素をチェック
+                sold_out_texts = page.get_by_text("売り切れ").all() + page.get_by_text("再入荷お知らせ").all()
+                is_sold_out = len(sold_out_texts) > 0
                 
-                print(f"「売り切れ/再入荷」テキスト要素数: {len(sold_out_elements)}")
-                print(f"「カートに入れる」ボタン要素数: {len(cart_button)}")
+                print(f"「売り切れ / 再入荷」判定要素数: {len(sold_out_texts)}")
                 
-                # 「カートに入れる」が存在し、かつ「売り切れ」要素がない場合のみ再販と判定
-                if has_cart_button and not is_text_sold_out:
+                # 「売り切れ/再入荷」テキスト・ボタンが一切検出されない場合のみ再販と判定
+                if not is_sold_out:
                     msg = f"【ポケセン再販検知！】「{name}」の在庫が復活しました！\n{url}"
                     send_discord(msg)
                     print(f"★ {name} の在庫復活を検知し、Discordに通知しました！")
                 else:
                     print(f"判定結果: {name} は現在も「売り切れ」状態です。")
                 
-                # サーバー負荷防止のため次の商品まで1秒待機
                 page.wait_for_timeout(1000)
                 
         except Exception as e:
