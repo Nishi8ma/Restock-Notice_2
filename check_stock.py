@@ -2,23 +2,23 @@ import os
 import requests
 from playwright.sync_api import sync_playwright
 
-# 監視対象（ポケモンセンターオンラインの商品リスト）
+# 監視対象（ポケモンセンターオンラインの対象4商品）
 ITEMS = [
     {
         "name": "炎がまたたく LEDライト ヒトモシ",
-        "url": "https://www.pokemoncenter-online.com/?p_cd=4521329339394"
+        "url": "https://www.pokemoncenter-online.com/4521329334233.html"
     },
     {
         "name": "炎がまたたく LEDライト ランプラー",
-        "url": "https://www.pokemoncenter-online.com/?p_cd=4521329339400"
+        "url": "https://www.pokemoncenter-online.com/4521329406701.html"
     },
     {
         "name": "炎がまたたく LEDライト シャンデラ",
-        "url": "https://www.pokemoncenter-online.com/?p_cd=4521329339417"
+        "url": "https://www.pokemoncenter-online.com/4521329355269.html"
     },
     {
         "name": "振り子時計 Little Daydream オタチ",
-        "url": "https://www.pokemoncenter-online.com/?p_cd=4521329391069"
+        "url": "https://www.pokemoncenter-online.com/4521329413044.html"
     }
 ]
 
@@ -42,7 +42,7 @@ def check():
                 
                 # ページへアクセス
                 page.goto(url, wait_until="domcontentloaded", timeout=30000)
-                # 描画完了まで3秒待機
+                # 画面の描画完了まで3秒待機
                 page.wait_for_timeout(3000)
                 
                 # ポケモンセンターオンラインの売り切れ/再入荷表示テキストを取得
@@ -63,7 +63,7 @@ def check():
                 else:
                     print(f"判定結果: {name} は現在も「売り切れ」状態です。")
                 
-                # サーバー負荷防止のため1秒待機
+                # サーバー負荷防止のため次の商品まで1秒待機
                 page.wait_for_timeout(1000)
                 
         except Exception as e:
