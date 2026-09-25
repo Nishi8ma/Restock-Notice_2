@@ -2,19 +2,23 @@ import os
 import requests
 from playwright.sync_api import sync_playwright
 
-# 監視対象（赤・青・黄のピクミン花瓶リスト）
+# 監視対象（ポケモンセンターオンラインの商品リスト）
 ITEMS = [
     {
-        "name": "一輪挿し 赤 PIKMIN",
-        "url": "https://store-jp.nintendo.com/item/goods/VM_NSJ_8_BZAB4"
+        "name": "炎がまたたく LEDライト ヒトモシ",
+        "url": "https://www.pokemoncenter-online.com/?p_cd=4521329339394"
     },
     {
-        "name": "一輪挿し 青 PIKMIN",
-        "url": "https://store-jp.nintendo.com/item/goods/VM_NSJ_8_BZAB5"
+        "name": "炎がまたたく LEDライト ランプラー",
+        "url": "https://www.pokemoncenter-online.com/?p_cd=4521329339400"
     },
     {
-        "name": "一輪挿し 黄 PIKMIN",
-        "url": "https://store-jp.nintendo.com/item/goods/VM_NSJ_8_BZAB6"
+        "name": "炎がまたたく LEDライト シャンデラ",
+        "url": "https://www.pokemoncenter-online.com/?p_cd=4521329339417"
+    },
+    {
+        "name": "振り子時計 Little Daydream オタチ",
+        "url": "https://www.pokemoncenter-online.com/?p_cd=4521329391069"
     }
 ]
 
@@ -36,31 +40,30 @@ def check():
                 
                 print(f"--- チェック中: {name} ---")
                 
-                # ページへアクセス（基本DOM読み込みまで）
+                # ページへアクセス
                 page.goto(url, wait_until="domcontentloaded", timeout=30000)
-                
-                # JavaScriptによるボタン要素の描画完了までしっかり3秒待機
+                # 描画完了まで3秒待機
                 page.wait_for_timeout(3000)
                 
-                # 画面内のテキスト要素を特定
-                sold_out_elements = page.get_by_text("品切れ").all()
+                # ポケモンセンターオンラインの売り切れ/再入荷表示テキストを取得
+                sold_out_elements = page.get_by_text("売り切れ").all() + page.get_by_text("再入荷お知らせを受け取る").all()
                 cart_button = page.get_by_text("カートに入れる").all()
                 
                 is_text_sold_out = len(sold_out_elements) > 0
                 has_cart_button = len(cart_button) > 0
                 
-                print(f"「品切れ」テキスト要素数: {len(sold_out_elements)}")
+                print(f"「売り切れ/再入荷」テキスト要素数: {len(sold_out_elements)}")
                 print(f"「カートに入れる」ボタン要素数: {len(cart_button)}")
                 
-                # 「カートに入れる」が存在し、かつ「品切れ」要素がない場合のみ再販と判定
+                # 「カートに入れる」が存在し、かつ「売り切れ」要素がない場合のみ再販と判定
                 if has_cart_button and not is_text_sold_out:
-                    msg = f"【再販検知！】「{name}」の在庫が復活しました！\n{url}"
+                    msg = f"【ポケセン再販検知！】「{name}」の在庫が復活しました！\n{url}"
                     send_discord(msg)
                     print(f"★ {name} の在庫復活を検知し、Discordに通知しました！")
                 else:
-                    print(f"判定結果: {name} は現在も「品切れ」状態です。")
+                    print(f"判定結果: {name} は現在も「売り切れ」状態です。")
                 
-                # サーバー負荷防止のため次のページまで1秒待機
+                # サーバー負荷防止のため1秒待機
                 page.wait_for_timeout(1000)
                 
         except Exception as e:
